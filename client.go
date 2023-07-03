@@ -11,13 +11,13 @@ const (
 	CityCODPaymentLimit = 250000
 )
 
-//Client for DPD soap api
+// Client for DPD soap api
 type Client struct {
 	auth     *Auth
 	services *soapClients
 }
 
-//ServiceUrls DPD services urls
+// ServiceUrls DPD services urls
 type ServiceUrls struct {
 	CalculatorURL string
 	GeographyURL  string
@@ -32,7 +32,7 @@ type soapClients struct {
 	tracking   *soap.Client
 }
 
-//NewClient creates new client
+// NewClient creates new client
 func NewClient(clientNumber int64, clientKey string, urls ServiceUrls) *Client {
 	return &Client{
 		auth: &Auth{
@@ -60,7 +60,7 @@ func NewClient(clientNumber int64, clientKey string, urls ServiceUrls) *Client {
 	}
 }
 
-//GetParcelShops return list of pickup/delivery points with restrictions about weight and dimensions
+// GetParcelShops return list of pickup/delivery points with restrictions about weight and dimensions
 func (cl *Client) GetParcelShops(req *ParcelShopRequest) ([]*ParcelShop, error) {
 	req.Auth = cl.auth
 	req.Namespace = ""
@@ -87,7 +87,7 @@ func (cl *Client) GetParcelShops(req *ParcelShopRequest) ([]*ParcelShop, error) 
 	return y.operationGetParcelShopsResponse.GetParcelShopsResponse.Return.ParcelShop, nil
 }
 
-//GetTerminalsSelfDelivery2 return terminals list. They don't have any restrictions
+// GetTerminalsSelfDelivery2 return terminals list. They don't have any restrictions
 func (cl *Client) GetTerminalsSelfDelivery2() ([]*Terminal, error) {
 	auth := cl.auth
 	auth.Namespace = new(string)
@@ -114,7 +114,7 @@ func (cl *Client) GetTerminalsSelfDelivery2() ([]*Terminal, error) {
 	return y.Response.Return.Terminal, nil
 }
 
-//GetCitiesCashPay countryCode must comply with ISO 3166-1 alpha-2
+// GetCitiesCashPay countryCode must comply with ISO 3166-1 alpha-2
 func (cl *Client) GetCitiesCashPay(countryCode string) ([]*City, error) {
 	a := struct {
 		operationGetCitiesCashPay `xml:"tns:getCitiesCashPay"`
@@ -141,7 +141,7 @@ func (cl *Client) GetCitiesCashPay(countryCode string) ([]*City, error) {
 	return y.GetCitiesCashPayResponse.Return, nil
 }
 
-//GetServiceCost2 return cost of delivery for Russia and Customs Union
+// GetServiceCost2 return cost of delivery for Russia and Customs Union
 func (cl *Client) GetServiceCost2(req *CalculateRequest) ([]*ServiceCostResponse, error) {
 	req.Auth = cl.auth
 	a := struct {
@@ -166,7 +166,32 @@ func (cl *Client) GetServiceCost2(req *CalculateRequest) ([]*ServiceCostResponse
 	return y.GetServiceCostResponse.Return, nil
 }
 
-//CreateOrder create a delivery order
+// GetServiceCost2 return cost of delivery for Russia and Customs Union
+func (cl *Client) GetServiceCostByParcels2(req *CalculateParcelsRequest) ([]*ServiceCostResponse, error) {
+	req.Auth = cl.auth
+	a := struct {
+		operationGetServiceCostByParcels2 `xml:"tns:getServiceCostByParcels2"`
+	}{
+		operationGetServiceCostByParcels2{
+			&getServiceCostByParcelsRequest{
+				Namespace: calculatorNamespace,
+				Request:   req,
+			},
+		},
+	}
+
+	y := struct {
+		operationGetServiceCostByParcels2Response `xml:"getServiceCostByParcels2Response"`
+	}{}
+
+	if err := cl.services.calculator.RoundTripWithAction("GetServiceCostByParcels2", a, &y); err != nil {
+		return nil, err
+	}
+
+	return y.GetServiceCostResponse.Return, nil
+}
+
+// CreateOrder create a delivery order
 func (cl *Client) CreateOrder(req *CreateOrderRequest) ([]*OrderStatus, error) {
 	req.Auth = cl.auth
 	a := struct {
@@ -191,7 +216,7 @@ func (cl *Client) CreateOrder(req *CreateOrderRequest) ([]*OrderStatus, error) {
 	return y.CreateOrderResponse.Return, nil
 }
 
-//AddParcels change order with parcel addition
+// AddParcels change order with parcel addition
 func (cl *Client) AddParcels(req *UpdateOrderRequest) (*OrderCorrectionStatus, error) {
 	req.Auth = cl.auth
 
@@ -216,7 +241,7 @@ func (cl *Client) AddParcels(req *UpdateOrderRequest) (*OrderCorrectionStatus, e
 	return y.AddParcelsResponse.Return, nil
 }
 
-//RemoveParcels change order with parcel deletion
+// RemoveParcels change order with parcel deletion
 func (cl *Client) RemoveParcels(req *UpdateOrderRequest) (*OrderCorrectionStatus, error) {
 	req.Auth = cl.auth
 	a := struct {
@@ -240,7 +265,7 @@ func (cl *Client) RemoveParcels(req *UpdateOrderRequest) (*OrderCorrectionStatus
 	return y.RemoveParcelsResponse.Return, nil
 }
 
-//CancelOrder cancel a delivery order
+// CancelOrder cancel a delivery order
 func (cl *Client) CancelOrder(req *CancelOrderRequest) ([]*OrderStatus, error) {
 	req.Auth = cl.auth
 	a := struct {
@@ -263,7 +288,7 @@ func (cl *Client) CancelOrder(req *CancelOrderRequest) ([]*OrderStatus, error) {
 	return y.CancelOrderResponse.Return, nil
 }
 
-//GetOrderStatus returns order creation status
+// GetOrderStatus returns order creation status
 func (cl *Client) GetOrderStatus(req []*InternalOrderNumber) ([]*OrderStatus, error) {
 	a := struct {
 		operationGetOrderStatus `xml:"tns:getOrderStatus"`
@@ -288,7 +313,7 @@ func (cl *Client) GetOrderStatus(req []*InternalOrderNumber) ([]*OrderStatus, er
 	return y.GetOrderStatusResponse.Return, nil
 }
 
-//GetStatesByClient returns all statuses of client parcels since previous method call
+// GetStatesByClient returns all statuses of client parcels since previous method call
 func (cl *Client) GetStatesByClient() (*ParcelsStates, error) {
 	a := struct {
 		operationGetStatesByClient `xml:"tns:getStatesByClient"`
@@ -313,8 +338,8 @@ func (cl *Client) GetStatesByClient() (*ParcelsStates, error) {
 	return y.GetStatesByClientResponse.Return, nil
 }
 
-//GetStatesByClientOrder returns list of states for all parcels for specified order
-//Order identify by client side order number
+// GetStatesByClientOrder returns list of states for all parcels for specified order
+// Order identify by client side order number
 func (cl *Client) GetStatesByClientOrder(req *TrackByClientOrderRequest) (*ParcelsStates, error) {
 	req.Auth = cl.auth
 	a := struct {
@@ -338,8 +363,8 @@ func (cl *Client) GetStatesByClientOrder(req *TrackByClientOrderRequest) (*Parce
 	return y.GetStatesByClientOrderResponse.Return, nil
 }
 
-//GetStatesByDPDOrder returns states history for specified parcel
-//Parcel identify by client side parcel number
+// GetStatesByDPDOrder returns states history for specified parcel
+// Parcel identify by client side parcel number
 func (cl *Client) GetStatesByDPDOrder(req *TrackByDPDOrderRequest) (*ParcelsStates, error) {
 	req.Auth = cl.auth
 	a := struct {
